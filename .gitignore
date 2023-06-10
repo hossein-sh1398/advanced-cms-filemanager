@@ -1,0 +1,8 @@
+/.data
+/.idea
+*.bat
+.env
+/src/public_html/storage
+.docker/apache/ssl
+.docker/laravel-echo-server/ssl
+.docker/peer-server/ssl

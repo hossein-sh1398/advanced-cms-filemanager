@@ -1,0 +1,151 @@
+version: "3.8"
+
+networks:
+  default:
+    name: ${PROJECT_NAME}
+
+services:
+  apache:
+    build:
+      context: ./.docker/apache
+      dockerfile: dockerfile
+      args:
+        - APACHE_VERSION=${APACHE_VERSION}
+    container_name: apache_${PROJECT_NAME}
+    tty: true
+    depends_on:
+      - php
+    ports:
+      - ${APACHE_PORT}:80
+      - ${APACHE_SSL_PORT}:443
+    volumes:
+      - ./src:/var/www/html
+      - ./.docker/apache/config.conf:/usr/local/apache2/conf/config.conf
+    networks:
+      - default
+
+  mysql:
+    image: ${MYSQL_VERSION}
+    container_name: mysql_${PROJECT_NAME}
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./.data/mysql:/var/lib/mysql
+    tty: true
+    ports:
+      - ${MYSQL_PORT}:3306
+    networks:
+      - default
+
+  php:
+    build:
+      context: ./.docker/php
+      dockerfile: Dockerfile
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+        - IP=${IP}
+    container_name: php_${PROJECT_NAME}
+    ports:
+      - ${PHP_PORT}:9000
+    tty: true
+    volumes:
+      - ./src:/var/www/html
+      - ./.docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    restart: unless-stopped
+    networks:
+      - default
+
+  phpmyadmin:
+    image: ${PHPMYADMIN_VERSION}
+    container_name: phpmyadmin_${PROJECT_NAME}
+    depends_on:
+      - mysql
+    ports:
+      - ${PHPMYADMIN_PORT}:80
+    environment:
+      PMA_HOST: mysql
+      PMA_ARBITRARY: 1
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    networks:
+      - default
+
+  redis:
+    image: ${REDIS_VERSION}
+    container_name: redis_${PROJECT_NAME}
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
+    volumes:
+      - ./.data/redis:/var/lib/redis
+    ports:
+      - ${REDIS_PORT}:6379
+
+  npm:
+    image: ${NODE_VERSION}
+    container_name: npm_${PROJECT_NAME}
+    working_dir: /var/www/html/project
+    volumes:
+      - ./src:/var/www/html
+    entrypoint: ["npm"]
+    networks:
+      - default
+
+  supervisor:
+    build:
+      context: ./.docker/supervisor
+      dockerfile: dockerfile
+      args:
+        - SUPERVISOR_VERSION=${SUPERVISOR_VERSION}
+    container_name: supervisor_${PROJECT_NAME}
+    tty: true
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - ${SUPERVISOR_PORT}:9999
+    networks:
+      - default
+
+  mailhog:
+    image: ${MAILHOG_VERSION}
+    container_name: mailhog_${PROJECT_NAME}
+    restart: unless-stopped
+    ports:
+      - ${MAILHOG_WEB_PORT}:1025
+      - ${MAILHOG_SERVER_PORT}:8025
+    networks:
+      - default
+
+  laravel-echo-server:
+    container_name: laravel_echo_server_${PROJECT_NAME}
+    build:
+      context: ./.docker/laravel-echo-server
+      dockerfile: laravel-echo-server.dockerfile
+      args:
+        - LARAVEL_ECHO_SERVER_NODE_VERSION=${LARAVEL_ECHO_SERVER_NODE_VERSION}
+    ports:
+      - ${LARAVEL_ECHO_SERVER_PORT}:6001
+    working_dir: /var/www/html/project
+    volumes:
+      - ./.docker/laravel-echo-server/laravel-echo-server.json:/var/www/html/project/laravel-echo-server.json
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - default
+
+  peer-server:
+    build:
+      context: ./.docker/peer-server
+      dockerfile: Dockerfile
+      args:
+        - PEER_SERVER_VERSION=${PEER_SERVER_VERSION}
+    container_name: peer_server_${PROJECT_NAME}
+    ports:
+      - ${PEER_SERVER_PORT}:9000
+    restart: unless-stopped
+    networks:
+      - default

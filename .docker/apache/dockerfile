@@ -1,0 +1,18 @@
+
+ARG APACHE_VERSION
+FROM $APACHE_VERSION
+
+RUN apt-get update && apt-get install -y  \
+    libnss3-tools \
+    libssl-dev \
+    wget
+
+# COPY ./ssl /usr/local/apache2/conf
+
+COPY config.conf /usr/local/apache2/conf/config.conf
+
+RUN echo "Include /usr/local/apache2/conf/config.conf" \
+    >> /usr/local/apache2/conf/httpd.conf
+
+EXPOSE 4003
+EXPOSE 4002

@@ -1,0 +1,12 @@
+ARG SUPERVISOR_VERSION
+FROM $SUPERVISOR_VERSION
+
+RUN apk update && apk add supervisor
+RUN docker-php-ext-install pdo pdo_mysql
+
+
+RUN mkdir -p "/etc/supervisor/logs"
+
+COPY /supervisord.conf /etc/supervisor/supervisord.conf
+
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
